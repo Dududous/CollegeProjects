@@ -1,0 +1,350 @@
+; Programa para o CESAR16i - Trabalho 2024/2
+
+;==========================================================================
+;	FF80 - FFFF: área reservada para os periféricos
+;==========================================================================
+	org	hff80
+
+; Acesso em 16 bits
+	org	hffbe
+IVET:	dw	0		; Vetor de interrupção
+
+; Acesso em 8 bits
+	org	hffc0
+	dab	[23]
+TIMDT:	db	0		; Registro de programação do timer
+INTS:	db	0		; INTERRUPT STATUS: IP x x x . x x IPStec IPStim
+INTE:	db	0		; INTERRUPT ENABLE: IE x x x . x x IEStec IEStim
+TECST:	db	0		; Status do teclado
+TECDT:	db	0		; Dado do teclado
+VISOR:	dab	[36]		; Portas de acesso ao visor
+
+
+;=========================================================================
+; Programa Principal
+
+            ORG H8000           ; Início do programa na memória
+
+
+; Programa principal - Leitura e execução das instruções
+MAIN:
+
+SETUP_INTERRUPTION:
+    clr INTS			; Reset pedidos de interrupçao
+    clr TECST			; Reset estado do hardware do teclado
+    mov #isr,IVET		; Set Interrupt Service Rotine
+    mov	#-1,Tecla
+
+    mov	#h82,INTE
+
+    MOV #0, SV
+    MOV R0, R1          ; Copia o endereço da lista de instruções para R1 (ponteiro)
+INSTRUCTION_LOOP:
+    MOV (R1)+, R2       ; Lê o código da instrução (2 bytes) e avança o ponteiro
+    CMP R2, #H0000      ; Verifica se é a instrução END-OK
+    BEQ END_OK_JMP      ; Se for END-OK, chama a função correspondente
+    CMP R2, #H0001      ; Verifica se é a instrução END-ERROR
+    BEQ END_ERROR_JMP   ; Se for END-ERROR, chama a função correspondente
+    CMP R2, #H0100      ; Verifica se é a instrução CLEAR
+    BEQ CLEAR_JMP       ; Se for CLEAR, chama a função correspondente
+    CMP R2, #H0200      ; Verifica se é a instrução VISOR-OFF
+    BEQ VISOR_OFF_JMP   ; Se for VISOR-OFF, chama a função correspondente
+    CMP R2, #H0201      ; Verifica se é a instrução VISOR-ON
+    BEQ VISOR_ON_JMP    ; Se for VISOR-ON, chama a função correspondente
+    CMP R2, #H0300      ; Verifica se é a instrução TEXT
+    BEQ TEXT_JMP        ; Se for TEXT, chama a função correspondente
+    CMP R2, #H0400      ; Verifica se é a instrução DELAY
+    BEQ DELAY_JMP       ; Se for DELAY, chama a função correspondente
+    CMP R2, #H0500      ; Verifica se é a instrução COPY
+    BEQ COPY_JMP        ; Se for COPY, chama a função correspondente
+    CMP R2, #H0501      ; Verifica se é a instrução PASTE
+    BEQ PASTE_JMP       ; Se for PASTE, chama a função correspondente
+    CMP R2, #H0600      ; Verifica se é a instrução LOOP
+    BEQ LOOP_JMP        ; Se for LOOP, chama a função correspondente
+
+INVALID_INSTRUCTION:
+    JMP END_ERROR       ; Caso encontre uma instrução inválida, trata como erro
+
+; Continua executando as próximas instruções da lista
+NEXT_INSTRUCTION:
+    BR INSTRUCTION_LOOP ; Volta para processar a próxima instrução
+
+END_OK_JMP:
+    JMP END_OK
+
+END_ERROR_JMP:
+    JMP END_ERROR
+CLEAR_JMP:
+    JMP CLEAR
+
+VISOR_OFF_JMP:
+    JMP VISOR_OFF
+
+VISOR_ON_JMP:
+    JMP VISOR_ON
+
+TEXT_JMP:
+    JMP TEXT
+
+DELAY_JMP:
+    JMP DELAY
+
+COPY_JMP:
+    JMP COPY
+
+PASTE_JMP:
+    JMP PASTE
+
+LOOP_JMP:
+    JMP LOOP
+
+;------------------------------------------------------------------------------------------
+
+; Instrução END-OK
+END_OK:
+    MOV #0, R0       ; Coloca 0 em R0 (indica sucesso)
+    RTS R7           ; Retorna ao chamador
+
+;------------------------------------------------------------------------------------------
+
+; Instrução END-ERROR
+END_ERROR:
+    MOV #1, R0       ; Coloca 1 em R0 (indica erro)
+    RTS R7           ; Retorna ao chamador
+
+;------------------------------------------------------------------------------------------
+
+; Instrução CLEAR
+CLEAR:
+    DEC  R1	
+    MOV (R1)+, R4    ; Lê o parâmetro start (posição inicial)
+    DEC R1
+    MOV (R1)+, R5    ; Lê o parâmetro size (número de posições a apagar)
+    AND #H00FF, R4
+    AND #H00FF, R5
+
+    ADD R4, R5       ; Calcula a posição final (start + size)
+CLEAR_LOOP:
+    CMP R4, #36
+    BEQ CLEAR_END
+    CMP R4, R5       ; Verifica se todas as posições foram limpas
+    BEQ CLEAR_END    ; Se sim, finaliza
+    MOV #32, VISOR(R4) ; Escreve espaço (ASCII 32) no visor
+    MOV #32, BUFFER(R4); Escreve espaço (ASCII 32) no buffer do visor
+    INC R4           ; Incrementa a posição atual
+    CMP #13, Tecla
+    BEQ TECLADOV
+    BR CLEAR_LOOP    ; Repete o loop
+CLEAR_END:
+    JMP NEXT_INSTRUCTION           ; Retorna ao chamador
+
+;------------------------------------------------------------------------------------------
+
+; Instrução VISOR-OFF
+VISOR_OFF:
+    MOV #VISOR, R4   ; Aponta para o início do visor
+    MOV #36, R5      ; Define o tamanho do visor (36 posições)
+VISOR_OFF_LOOP:
+    CMP R5, #0       ; Verifica se todas as posições foram apagadas
+    BEQ VISOR_OFF_END ; Se sim, finaliza
+    MOV #0,(R4)    
+    INC R4           ; Apaga a posição atual do visor			
+    DEC R5           ; Decrementa o contador de posições restantes
+    CMP #13, Tecla
+    BEQ TECLADOV
+    BR VISOR_OFF_LOOP ; Repete o loop
+VISOR_OFF_END:
+    MOV #1, SV
+    JMP NEXT_INSTRUCTION           ; Retorna ao chamador
+TECLADOV:
+    JMP END_OK
+
+;------------------------------------------------------------------------------------------
+
+; Instrução VISOR-ON
+VISOR_ON:
+    MOV #BUFFER, R4  ; Aponta para o buffer onde os dados foram salvos
+    MOV #VISOR, R5   ; Aponta para o início do visor
+    MOV #36, R3      ; Define o tamanho do visor (36 posições)
+VISOR_ON_LOOP:
+    CMP R3, #0       ; Verifica se todas as posições foram restauradas
+    BEQ VISOR_ON_END ; Se sim, finaliza
+    MOV (R4), (R5)   ; Copia os dados do buffer para o visor			
+    INC R4
+    INC R5
+    DEC R3           ; Decrementa o contador de posições restantes
+    CMP #13, Tecla
+    BEQ TECLADOD
+    BR VISOR_ON_LOOP ; Repete o loop
+VISOR_ON_END:
+    MOV #0, SV
+    JMP NEXT_INSTRUCTION           ; Retorna ao chamador
+
+;------------------------------------------------------------------------------------------
+
+; Instrução TEXT
+TEXT:
+    DEC  R1	
+    MOV (R1)+, R4    ; Lê o parâmetro start (posição inicial) 
+    DEC R1
+
+TEXT_LOOP:
+    MOV (R1), R5
+    AND #H00FF, R5
+    CMP R5, #0        ; Verifica se é o terminador da string (H00)
+    BEQ TEXT_END      ; Se sim, finaliza a escrita
+    MOV SV, R3
+    CMP R3, #1
+    BEQ VISOR_TEXTO_APAGADO
+    MOV (R1), VISOR(R4); Escreve o caractere no visor na posição atual			
+VISOR_TEXTO_APAGADO:
+    MOV (R1), BUFFER(R4); Escreve o caractere no buffer do visor na posição atual		
+    INC R4            ; Incrementa a posição no visor
+    INC R1
+    CMP #13, Tecla
+    BEQ TECLADOD
+    BR TEXT_LOOP      ; Repete para o próximo caractere
+
+TEXT_END:
+    ADD #2, R1
+    JMP NEXT_INSTRUCTION            ; Retorna ao chamador'
+
+;------------------------------------------------------------------------------------------
+
+; Instrução DELAY								
+DELAY:	
+    MOV (R1)+, R4    ; Lê o parâmetro       
+    MOV	#1,TIMDT	;Programa a periodicidade do temporizador para 25ms(valor próximo ao clock do cesar)
+DELAY_LOOP:
+    MOV	INTS,R5	; Lê o registrador de notificação do temporizador
+    ASR	R5	; Separa o bit de notificação para análise
+    BCC	DELAY_LOOP	; Se não houver notificação, volta a ler o registrador de notificação
+    AND	#hFFFE,INTS
+    SUB #1, R4
+    CMP #13, Tecla
+    BEQ TECLADOD
+    CMP R4, #0
+;    BMI DELAY_END
+    BNE DELAY_LOOP
+
+DELAY_END:
+    JMP NEXT_INSTRUCTION            ; Retorna ao chamador
+TECLADOD:
+    JMP END_OK
+;------------------------------------------------------------------------------------------
+
+; Instrução COPY
+COPY:
+    DEC  R1	
+    MOV (R1)+, R4    ; Lê o parâmetro start (posição inicial)
+    DEC R1
+    MOV (R1)+, R5    ; Lê o parâmetro size (número de posições a COPIAR)
+    AND #H00FF, R4
+    AND #H00FF, R5
+    INC R4
+    DEC R5
+    MOV #BUFFER_COPY, R3     ; Aponta para o início do buffer temporário
+
+COPY_LOOP:
+    CMP R5, #0          ; Verifica se todas as posições foram copiadas
+    BEQ COPY_END        ; Se sim, finaliza a cópia
+    CMP R4, #35         ; Verifica se a posição está dentro do visor
+    BGE COPY_SKIP       ; Se ultrapassar o visor, ignora
+    MOV BUFFER(R4), (R3) ; Copia do buffer do visor para o buffer temporário
+
+COPY_SKIP:
+    INC R3
+    INC R4              ; Incrementa a posição no visor
+    DEC R5              ; Decrementa o contador de tamanho restante
+    BR COPY_LOOP        ; Repete até terminar a cópia
+
+COPY_END:
+    JMP NEXT_INSTRUCTION              ; Retorna ao chamador
+
+;------------------------------------------------------------------------------------------
+
+; Instrução PASTE
+PASTE:
+    DEC  R1	
+    MOV (R1)+, R4    ; Lê o parâmetro start (posição inicial)
+    AND #H00FF, R4
+    MOV #BUFFER_COPY, R5     ; Aponta para o início do buffer temporário
+
+
+PASTE_LOOP:
+    CMP R4, #35         ; Verifica se a posição está dentro do visor
+    BGE PASTE_END       ; Se ultrapassar o visor, finaliza
+    MOV (R5), R3	; Verifica se a string acabou
+    AND #H00FF, R3
+    CMP R3,#0
+    BEQ PASTE_END
+
+    MOV (R5), BUFFER(R4);
+    MOV SV, R3
+    CMP R3, #1
+    BEQ VISOR_TEXTO_APAGADO1
+    MOV R4, R3
+    DEC R3
+    MOV BUFFER(R3), VISOR(R3);
+		  
+VISOR_TEXTO_APAGADO1:
+
+    INC R4              ; Incrementa a posição no visor
+    INC R5
+    BR PASTE_LOOP       ; Repete até terminar a escrita
+PASTE_END:
+    MOV R4, R3
+    DEC R3
+    MOV BUFFER(R3), VISOR(R3);
+    JMP NEXT_INSTRUCTION              ; Retorna ao chamador
+;------------------------------------------------------------------------------------------
+
+; Instrução LOOP
+LOOP:
+    MOV R0, R1          ; Restaura o endereço inicial da lista de instruções em R0
+    JMP NEXT_INSTRUCTION              ; Retorna ao chamador para reiniciar a execução
+
+;------------------------------------------------------------------------------------------
+
+isr:
+	mov		r0,-(r6)	
+	mov		r1,-(r6)
+	mov		r2,-(r6)
+	mov		r3,-(r6)
+	mov		r4,-(r6)
+	mov		r5,-(r6)
+
+	mov		INTS,r0		; Verifica se a INT do TECLADO
+	and		#2,r0
+	beq		ISR2
+	jsr		r7,ISRtec	; Tratamento da INT do TECLADO
+	and		#hFFFD,INTS	; Desliga bit de INT TECLADO
+ISR2:
+
+	mov		(r6)+,r5	; Retorna os registradores da pilha
+	mov		(r6)+,r4
+	mov		(r6)+,r3
+	mov		(r6)+,r2
+	mov		(r6)+,r1
+	mov		(r6)+,r0
+
+	rti					; Return From Interrupt
+	
+
+;----------------------------------------------------------
+;	Tratamento das interrupçoes de teclado
+
+ISRtec:
+	cmp		Tecla,#256
+	bls		ISRtec_1
+	mov		TECDT,Tecla
+ISRtec_1:
+	clr		TECST
+
+ISRtec_Fim:
+	rts		r7
+
+Tecla:		dw	0
+SV:	db	0		    ; Flag do visor(on/off)
+BUFFER:	dab		[36]        ; Buffer visor
+BUFFER_COPY: dab	[36]	    ; Buffer temporário para COPY/PASTE

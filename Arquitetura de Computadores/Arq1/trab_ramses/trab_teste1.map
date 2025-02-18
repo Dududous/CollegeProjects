@@ -1,0 +1,26 @@
+Símbolo         Valor Decimal   Valor Hexadecimal
+-------         -------------   -----------------
+LISTAT                    248                  F8
+N                         254                  FE
+LORIGEM                   209                  D1
+LDEST                     210                  D2
+INDICET                   211                  D3
+P1                        212                  D4
+PAUX                      213                  D5
+SQR_N                     214                  D6
+MATRIZ                    215                  D7
+LOOP_E1                    16                  10
+EINICIO                    28                  1C
+E2                         32                  20
+SUBOUSOMA                  81                  51
+SUBINICIO                  85                  55
+SOMALINHAS                111                  6F
+SOMAINICIO                111                  6F
+TROCALINHAS               135                  87
+TROCAINICIO               139                  8B
+MULT                      171                  AB
+MULTLOOP                  178                  B2
+MULTEND                   186                  BA
+DIAGONAL                  188                  BC
+LOOPD                     194                  C2
+DFIM                      206                  CE

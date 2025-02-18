@@ -1,0 +1,148 @@
+ORG 248
+listaT:  DAB [6]      
+N:       DB           
+
+ORG 209
+lorigem: DB          
+ldest:   DB          
+indiceT: DB      
+p1:      DB           
+paux:	 DB 	      
+sqr_n:   DB           ;quadrado de n
+Matriz:  DAB [25]     
+
+ORG 0
+        LDR B N       ;começo do programa
+        STR B p1          
+        JSR mult          
+        STR X sqr_n       
+        LDR X #0          
+        STR A 255         
+
+
+	LDR B #1
+        LDR A sqr_n       
+loop_e1:		;preenchimento da matrix
+        STR B Matriz, X   
+        SUB A #1          
+        JZ einicio        
+        ADD B #1          
+        ADD X #1          
+        JMP loop_e1      
+
+einicio:		;inicio das trasformações
+	LDR X #255
+	STR X indiceT
+e2:
+        LDR X indiceT
+	ADD X #1
+	STR X indiceT
+        LDR A listaT, X   
+
+        AND A #7          
+        SUB A #1
+        STR A p1
+        JSR mult
+        STR X lorigem    
+
+        LDR X indiceT
+        LDR B listaT, X 
+        AND B #56
+        SHR B
+        SHR B
+        SHR B
+        SUB B #1
+        STR B p1
+        JSR mult
+        STR X ldest     
+	LDR B N		  ;garante que B será igual a n(loop das operações)
+        LDR X indiceT
+        LDR A listaT, X
+        AND A #192        
+	JZ diagonal	  
+        JN subousoma       
+        JMP trocalinhas  
+
+subousoma:
+        SUB A #128	;se zero vai para soma(10xxxxxx)
+        JZ somalinhas    
+
+subinicio:
+        LDR X ldest
+        LDR A matriz, X
+        LDR X lorigem
+        SUB A matriz, X
+        ADD X #1
+        STR X lorigem
+        LDR X ldest
+        STR A matriz, X
+        ADD X #1
+        STR X ldest
+        SUB B #1
+        JZ e2
+        JMP subinicio
+
+
+somalinhas:		;Soma das linhas
+somainicio:
+        LDR X lorigem
+        LDR A matriz, X
+        ADD X #1
+        STR X lorigem
+        LDR X ldest
+        ADD A matriz, X
+        STR A matriz, X
+        ADD X #1
+        STR X ldest
+        SUB B #1
+        JZ e2
+        JMP somainicio
+
+trocalinhas:		;Troca de linhas
+	LDR A N
+	STR A paux
+trocainicio:
+        LDR X lorigem       ; x -> A
+        LDR A matriz, X      
+        LDR X ldest
+        LDR B matriz, X      ; y -> B
+        STR A matriz, X      ; A -> y
+	ADD X #1
+	STR X ldest
+	LDR X lorigem
+	STR B matriz, X	     ; B -> x
+	ADD X #1	
+	STR X lorigem
+        LDR A paux
+	SUB A #1
+	STR A paux
+        JZ e2
+        JMP trocainicio
+
+mult:			;Multiplicação para calculo dos indices
+	NOP
+        LDR A p1
+        LDR B N
+        LDR X #0
+multloop:
+        ADD X p1
+        SUB B #1
+        JZ multend
+        JMP multloop
+multend:
+        JMP mult,I
+
+diagonal:		;Calcula a soma da diagonal
+	LDR A,#0
+	LDR X,#0
+	LDR B,N
+loopd:
+	JZ dfim
+	ADD A,Matriz,X
+	ADD X,N
+	ADD X,#1
+	ADD B,#255
+	JMP loopd	
+dfim:
+	STR A,255
+	HLT

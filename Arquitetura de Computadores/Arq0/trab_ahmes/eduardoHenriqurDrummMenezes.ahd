@@ -1,0 +1,108 @@
+; Nome: Eduardo Henrique Drumm Menezes
+; Cartão: 00588224
+
+ORG 128 ;Declaração das variáveis
+	x:DB 
+	y:DB 
+	z:DB 
+	n:DB 
+	a1:DB
+	a0:DB
+	b1:DB
+	b0:DB
+	C:DB
+	D:DB
+	temp1:DB
+	temp2:DB
+	temp3:DB
+	um:DB 1
+	co:DB 128
+
+ORG 0 ;Começo das instruções
+	LDA 255
+	STA a1
+	STA a0
+	LDA x
+	ADD y
+	STA temp1
+	JNC r1  
+	LDA temp2
+	ADD um
+	STA temp2
+r1:	LDA z
+	STA temp3
+cm:	LDA temp3 ;Calculo de A
+	JZ cb 
+	SUB um
+	STA temp3
+	LDA a0
+	ADD temp1
+	STA a0
+	JNC sc
+	LDA a1
+	ADD temp2
+	ADD um
+	STA a1
+	JMP cm
+sc:	LDA a1
+	ADD temp2
+	STA a1
+	JMP cm	
+cb:	LDA a1 ;Começo do calculo de B
+	STA temp2
+	LDA a0
+	STA temp1
+	LDA n
+	STA temp3
+cd:	LDA temp3
+	JZ cc
+	SUB um
+	STA temp3
+	LDA temp2
+	SHR
+	STA temp2 
+	JNC coc
+	LDA temp1
+	SHR
+	ADD co
+	STA temp1
+	JMP cd
+coc:	LDA temp1
+	SHR
+	STA temp1
+	JMP cd
+cc:	LDA temp1
+	STA b0
+	LDA temp2
+	STA b1
+	LDA z
+	JZ qfim
+	LDA x
+	SUB y
+	STA temp1
+	LDA 255
+	STA C
+mc:	LDA temp1
+	JMP 143
+
+
+ORG 143
+	JZ fim
+	JB fin
+	SUB z
+	STA temp1
+	LDA C
+	ADD um
+	STA C
+	JMP mc
+qfim:	ADD um
+	STA C
+fin:	ADD z
+	STA D
+	LDA C
+	SUB um
+	STA C
+fim:	HLT
+	
+	
+	
