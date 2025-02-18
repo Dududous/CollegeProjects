@@ -1,0 +1,6 @@
+[submodule "CompTrees"]
+	path = CompTrees
+	url = https://github.com/Dududous/CompTrees
+[submodule "INFmon"]
+	path = INFmon
+	url = https://github.com/thschmitz/INFmon
